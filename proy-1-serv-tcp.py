@@ -10,11 +10,15 @@ Requerimientos del servidor
 • Acepte conexiones de hasta 5 clientes concurrentes.
 • Cree un hilo por cliente para manejar la comunicación.
 2. El servidor debe interpretar comandos básicos enviados por el cliente, tales como:
-• ls → listar archivos en el directorio actual.
+• ls → listar archivos en el directorio actual. y poder indicarle el path
 • pwd → mostrar el directorio de trabajo.
 • cat <archivo> → mostrar el contenido de un archivo.
 • exit → cerrar la conexión del cliente.
+.help(ver comandos disponibles)
+.mkdir
+
 3. Manejar errores (ej. archivo inexistente, comando inválido) devolviendo mensajes claros al cliente.
+4. Validar usuarios, usuario y contraseña, contrastarlo con una bd en el servidor
 
 """
 
@@ -91,7 +95,7 @@ def inicio():
 
     #crea un hilo , lo inicia, vuelve a empezar por cada solicitud de conexion, funciones del multiprocesamiento
     while True:#loop infinito
-
+        #accept genera tupla, socjet y direccion ip
         conn, addr = server.accept()
         #paso socket del cliente y direccion del cliente, esto genera procesos concurrentes
         thread = threading.Thread(target=atender_clientes, args=(conn, addr))
