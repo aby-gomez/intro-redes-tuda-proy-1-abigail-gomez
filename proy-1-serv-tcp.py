@@ -102,7 +102,8 @@ def validar_usuario(conn) -> bool:
     conn.sendall("Ingrese usuario y contraseña ".encode('utf-8')) 
     datos = conn.recv(1024).decode('utf-8').strip().split()
     
-    if not datos:
+    #evalua que se hayan enviado datos tanto en usuario como en contraseña
+    if len(datos) < 2:
         return False
 
     with open("users.json","r", encoding="utf-8") as archivo:
