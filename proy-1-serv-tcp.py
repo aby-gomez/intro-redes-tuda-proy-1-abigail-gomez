@@ -68,9 +68,10 @@ def atender_clientes(conn,addr):
             if lista_comandos[0] in ['ls', 'pwd', 'cat', 'mkdir']:
 
                 try:
-                    # Pasar la lista completa directamente
+                    # subprocess le delega el trabajo al so, devuelve un objeto con  las 3 propiedades , capture ouput devuelve el texto del comnado, text true decodifica byte a string
                     ejecucion = subprocess.run(lista_comandos, capture_output=True, text=True, timeout=5)
                     
+                    #cuando todo esta ok envia un 0 sino algo disntitnto
                     if ejecucion.returncode != 0:
                         # Si el comando falló en el SO (ej: 'cat' de un archivo que no existe)
                         respuesta = f"Error: {ejecucion.stderr}"
