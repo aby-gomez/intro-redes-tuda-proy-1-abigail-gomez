@@ -25,33 +25,46 @@ Requerimientos del servidor
 HOST = '0.0.0.0'
 PORT = 5000
 
+comandos_disponibles= """
+    • ls → listar archivos en el directorio actual o del path indicado
+    • pwd → mostrar el directorio de trabajo.
+    • cat <archivo> → mostrar el contenido de un archivo.
+    • exit → finaliza la sesión.
+    • help → ver comandos disponibles
+    • mkdir → crea carpeta
+"""
 
 def atender_clientes(conn,addr):
     print(f"[NUEVA CONEXIÓN] {addr} conectado.")
+
+    conn.sendall(("Bienvenido, conexión aceptada\n"
+                 +comandos_disponibles+"\n").encode('utf-8'))  
     try:
         while True:
-            buffer = ""
             while True:
                 # Recibe datos del cliente
                 chunk = conn.recv(1024).decode('utf-8')
+                if '\n' in chunk:
+                    #elimina caracteres o espacios del inicio y el final
+                    chunk = chunk.strip()
                 #si no recibi datos salgo
                 if not chunk:
-                    break
+                    conn.sendall("No se registró ningun comando, intenta nuevamente\n".encode('utf-8'))            
                 #
-                if '\n' in chunk:
-                    buffer += chunk.replace("\n", "")
+                else:
                     break
-                buffer += chunk
-
-            if not buffer or buffer.lower() == 'exit':
+                
+                
+            
+            if not chunk or chunk.lower() == 'exit':
                 print("Sesión finalizada por el cliente")
                 break
 
-            print(f"Comando recibido: {buffer}")
-            lista_comandos = buffer.strip().split()
-
+            print(f"Comando recibido: {chunk}")
+            lista_comandos = chunk.split()
+            print(lista_comandos)
            
-            if lista_comandos[0] in ['ls', 'pwd', 'cat']:
+            if lista_comandos[0] in ['ls', 'pwd', 'cat', 'mkdir']:
 
                 try:
                     # Pasar la lista completa directamente
@@ -66,10 +79,13 @@ def atender_clientes(conn,addr):
                         
                 except Exception as e:
                     respuesta = f"Error interno al ejecutar el comando: {str(e)}\n"
-                
+
+            elif lista_comandos[0].lower() == "help":
+                respuesta = comandos_disponibles
+            
             else:
             # Si el comando no está en la lista de permitidos 
-                respuesta = f"Error: Comando '{buffer}' no permitido o inválido.\n"
+                respuesta = f"Error: Comando '{chunk}' no permitido o inválido.\n"
 
             respuesta_delimitada = respuesta + "\n"
             conn.sendall(respuesta_delimitada.encode('utf-8'))           
@@ -88,18 +104,27 @@ def atender_clientes(conn,addr):
 def inicio():
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #evita error de Addres already in use al reiniciar 
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((HOST, PORT))
-    #escucha hasta 5 clientes
+    #tamaño de la cola de espera
     server.listen(5)
     print("Servidor TCP esperando conexión...")
-
+    try:
     #crea un hilo , lo inicia, vuelve a empezar por cada solicitud de conexion, funciones del multiprocesamiento
-    while True:#loop infinito
-        #accept genera tupla, socjet y direccion ip
-        conn, addr = server.accept()
-        #paso socket del cliente y direccion del cliente, esto genera procesos concurrentes
-        thread = threading.Thread(target=atender_clientes, args=(conn, addr))
-        thread.start()
+        while True:#loop infinito
+            #accept genera tupla, socket y direccion ip
+            conn, addr = server.accept()
+            #paso socket del cliente y direccion del cliente, esto genera procesos concurrentes
+            thread = threading.Thread(target=atender_clientes, args=(conn, addr))
+            thread.start()
+    except Exception as e:
+        
+        print(f"[ERROR1] Con {addr}: {e}")
+    finally:
+        server.close()
+        
+    
 
 
 if __name__ == "__main__":
