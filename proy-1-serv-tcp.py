@@ -1,6 +1,7 @@
 import socket
 import threading
 import subprocess    
+import json
 
 
 """
@@ -97,7 +98,30 @@ def atender_clientes(conn,addr):
         print(f"[DESCONECTADO] {addr} finalizó.")
 
 
+def validar_usuario(conn) -> bool: 
+    conn.sendall("Ingrese usuario y contraseña ".encode('utf-8')) 
+    datos = conn.recv(1024).decode('utf-8').strip().split()
+    
+    if not datos:
+        return False
 
+    with open("users.json","r", encoding="utf-8") as archivo:
+        datos_cargados = json.load(archivo)
+
+    print(datos_cargados)
+    print(datos)
+
+    ok = datos_cargados.get(datos[0],[])
+    print(ok)
+    if not ok: 
+        return False
+    
+    if ok == datos[1] : 
+        return True
+    
+    return False
+
+    
 
 
 
@@ -115,14 +139,18 @@ def inicio():
         while True:#loop infinito
             #accept genera tupla, socket y direccion ip
             conn, addr = server.accept()
-            #paso socket del cliente y direccion del cliente, esto genera procesos concurrentes
-            thread = threading.Thread(target=atender_clientes, args=(conn, addr))
-            thread.start()
+            resultado_validacion = validar_usuario(conn)
+
+            if resultado_validacion:
+                #paso socket del cliente y direccion del cliente, esto genera procesos concurrentes
+                thread = threading.Thread(target=atender_clientes, args=(conn, addr))
+                thread.start()
+            else:
+                conn.close()
     except Exception as e:
         
         print(f"[ERROR1] Con {addr}: {e}")
-    finally:
-        server.close()
+    
         
     
 
