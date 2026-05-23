@@ -1,4 +1,5 @@
 import socket
+import getpass
 """
 1. Implementar un cliente TCP en Python que:
 • Se conecte al servidor en la IP y puerto especificados.
@@ -10,14 +11,11 @@ import socket
 HOST = '127.0.0.1'
 PORT = 5000
 
-def iniciar_cliente():
+def enviar_comandos(cliente):
     try:
-        #creo objeto socket que se conecta por ipv4 y por protocolo tcp
-        cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        cliente.connect((HOST,PORT))
-        msg= cliente.recv(1024).decode('utf-8')
-        print(msg)
+       
+    
+       
         while True:
             comandos= input(f"comando:")
             comando_temp= (comandos+ '\n').encode('utf-8') 
@@ -35,6 +33,34 @@ def iniciar_cliente():
     except Exception as e:
         print(f"[ERROR]: {e}")
 
+def iniciar_sesion():
+    try:
+        #creo objeto socket que se conecta por ipv4 y por protocolo tcp
+        cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        cliente.connect((HOST,PORT))
+
+        
+        msg= cliente.recv(1024).decode('utf-8')
+        print(msg)
+            
+        usuario = input("Usuario: ")
+        contrasenia = getpass.getpass("Contraseña: ")
+
+        cliente.send((usuario+" "+contrasenia+'\n').encode('utf-8'))
+        respuesta = cliente.recv(1024).decode('utf-8')
+
+        if respuesta == "":
+            print("Usuario o contraseña incorrectos")
+            return
+        
+        print(respuesta)
+        enviar_comandos(cliente)
+
+    except Exception as e:
+        print(f"[ERROR]: {e}")
+    
+
 if __name__ == "__main__":
-    iniciar_cliente()
+    iniciar_sesion()
 
