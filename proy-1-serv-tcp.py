@@ -4,6 +4,7 @@ import subprocess
 import json
 
 
+
 """
 Requerimientos del servidor
 1. Implementar un servidor TCP en Python que:
@@ -25,6 +26,9 @@ Requerimientos del servidor
 
 HOST = '0.0.0.0'
 PORT = 5000
+
+# semáforo global limitado a 5 pases
+semaforo_clientes = threading.Semaphore(5)
 
 comandos_disponibles= """
     • ls → listar archivos en el directorio actual o del path indicado
@@ -97,7 +101,8 @@ def atender_clientes(conn,addr):
     finally:
         conn.close()
         print(f"[DESCONECTADO] {addr} finalizó.")
-
+        #Cuando el hilo termina, liberamos el pase para el próximo cliente
+        semaforo_clientes.release()
 
 def validar_usuario(conn) -> bool: 
     conn.sendall("Ingrese usuario y contraseña ".encode('utf-8')) 
@@ -141,6 +146,9 @@ def inicio():
         while True:#loop infinito
             #accept genera tupla, socket y direccion ip
             conn, addr = server.accept()
+            # antes de validar o crear el hilo veo si hay pases disponibles
+            # Si ya hay 5, el flujo se frena acá hasta que uno se desconecte.
+            semaforo_clientes.acquire()
             resultado_validacion = validar_usuario(conn)
 
             if resultado_validacion:
@@ -149,6 +157,8 @@ def inicio():
                 thread.start()
             else:
                 conn.close()
+                # Si no pasa la validación,  cierra el socket y libera el pase inmediatamente
+                semaforo_clientes.release()
     except Exception as e:
         
         print(f"[ERROR1] Con {addr}: {e}")
