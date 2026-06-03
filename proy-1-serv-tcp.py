@@ -37,12 +37,14 @@ semaforo_clientes = threading.Semaphore(5)
 DIRECTORIO_RAIZ = Path(os.getcwd()).resolve()
 
 comandos_disponibles= """
-    • ls → listar archivos en el directorio actual o del path indicado
-    • pwd → mostrar el directorio de trabajo.
-    • cat <archivo> → mostrar el contenido de un archivo.
-    • exit → finaliza la sesión.
-    • help → ver comandos disponibles
-    • mkdir → crea carpeta
+   Comandos Disponibles (Linux / Windows):
+    • ls / dir          → Listar archivos en el directorio actual o el path indicado.
+    • pwd               → Mostrar la ruta absoluta del directorio de trabajo actual.
+    • cd <directorio>   → Cambiar de directorio (Validación de seguridad).
+    • cat / type <arch> → Mostrar el contenido de un archivo de texto en pantalla.
+    • mkdir <nombre>    → Crear una nueva carpeta en la ruta actual.
+    • help              → Mostrar este menú de asistencia con los comandos permitidos.
+    • exit              → Finalizar la sesión actual y cerrar la conexión de forma segura.
 """
 
 
@@ -100,7 +102,7 @@ def atender_clientes(conn,addr):
                         respuesta = f"Error al cambiar de directorio: {str(e)}"
 
 
-            elif sys.platform == "linux" and lista_comandos[0] in ['ls', 'pwd', 'cat', 'mkdir'] or sys.platform == "win32" and lista_comandos[0] in ['dir', 'pwd', 'type', 'mkdir']:
+            elif (sys.platform == "linux" and lista_comandos[0] in ['ls', 'pwd', 'cat', 'mkdir']) or (sys.platform == "win32" and lista_comandos[0] in ['dir', 'pwd', 'type', 'mkdir']):
 
                 try:
                     # subprocess le delega el trabajo al so, devuelve un objeto con  las 3 propiedades , capture ouput devuelve el texto del comnado, text true decodifica byte a string
