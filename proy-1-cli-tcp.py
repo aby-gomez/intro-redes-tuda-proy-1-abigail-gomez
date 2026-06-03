@@ -1,6 +1,8 @@
 import socket
 import ssl
 import getpass
+from protocolo import enviar_mensaje_manual, recibir_mensaje_manual
+
 """
 1. Implementar un cliente TCP en Python que:
 • Se conecte al servidor en la IP y puerto especificados.
@@ -12,20 +14,20 @@ import getpass
 HOST = '127.0.0.1'
 PORT = 5000
 
+
+
 def enviar_comandos(cliente):
     try:
        
-    
-       
         while True:
             comandos= input(f"comando:")
-            comando_temp= (comandos+ '\n').encode('utf-8') 
+            comando_temp= (comandos+ '\n')
 
-            cliente.send(comando_temp)
+            enviar_mensaje_manual(cliente,comando_temp)
 
-            respuesta = cliente.recv(1024).decode('utf-8')
+            respuesta = recibir_mensaje_manual(cliente)
 
-            if respuesta == "":
+            if not respuesta :
                 print("Conexion finalizada")
                 break
 
@@ -48,20 +50,21 @@ def iniciar_sesion():
         cliente.connect((HOST,PORT))
 
         
-        msg= cliente.recv(1024).decode('utf-8')
+        msg= recibir_mensaje_manual(cliente)
         print(msg)
             
         usuario = input("Usuario: ")
         contrasenia = getpass.getpass("Contraseña: ")
 
-        cliente.send((usuario+" "+contrasenia+'\n').encode('utf-8'))
-        respuesta = cliente.recv(1024).decode('utf-8')
+        enviar_mensaje_manual(cliente,(usuario+" "+contrasenia+'\n'))
+        respuesta = recibir_mensaje_manual(cliente)
 
-        if respuesta == "":
-            print("Usuario o contraseña incorrectos")
+        if not respuesta or "denegado" in respuesta.lower():
+            print(respuesta)
             return
         
         print(respuesta)
+    
         enviar_comandos(cliente)
 
     except Exception as e:

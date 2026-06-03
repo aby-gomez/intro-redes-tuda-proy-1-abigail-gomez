@@ -7,6 +7,9 @@ import ssl
 import bcrypt
 import os
 from pathlib import Path
+from protocolo import enviar_mensaje_manual, recibir_mensaje_manual
+      
+
 """
 Requerimientos del servidor
 1. Implementar un servidor TCP en Python que:
@@ -42,37 +45,62 @@ comandos_disponibles= """
     • mkdir → crea carpeta
 """
 
-def atender_clientes(conn,addr):
-    print(f"[NUEVA CONEXIÓN] {addr} conectado.")
 
-    conn.sendall(("Bienvenido, conexión aceptada\n"
-                 +comandos_disponibles+"\n").encode('utf-8'))  
+
+
+def atender_clientes(conn,addr):
+    
+    #para que sea multihilo la validacion del cliente se encuentra dentro del hilo
+    if not validar_usuario(conn):
+        print(f"[ACCESO DENEGADO] {addr} falló la autenticación.")
+        enviar_mensaje_manual(conn,"Acceso denegado: Credenciales invalidas.\n")
+        conn.close()
+        semaforo_clientes.release() 
+        return
+    
+    print(f"[NUEVA CONEXIÓN] {addr} conectado.")
+    enviar_mensaje_manual(conn,("Bienvenido, conexion aceptada\n"
+                  +comandos_disponibles+"\n"))                
     try:
         while True:
-            while True:
                 # Recibe datos del cliente
-                chunk = conn.recv(1024).decode('utf-8')
-                if '\n' in chunk:
-                    #elimina caracteres o espacios del inicio y el final
-                    chunk = chunk.strip()
+            chunk = recibir_mensaje_manual(conn)
+                
+            chunk = chunk.strip()
                 #si no recibi datos salgo
-                if not chunk:
-                    conn.sendall("No se registró ningun comando, intenta nuevamente\n".encode('utf-8'))            
-                #
-                else:
-                    break
+            if not chunk:
+                enviar_mensaje_manual(conn,"No se registro ningun comando, intenta nuevamente\n")         
+                continue   
                 
-                
-            
-            if not chunk or chunk.lower() == 'exit':
+            if chunk.lower() == 'exit':
                 print("Sesión finalizada por el cliente")
                 break
 
             print(f"Comando recibido: {chunk}")
             lista_comandos = chunk.split()
-            print(lista_comandos)
+
            
-            if sys.platform == "linux" and lista_comandos[0] in ['ls', 'pwd', 'cat', 'mkdir'] or sys.platform == "win32" and lista_comandos[0] in ['dir', 'pwd', 'type', 'mkdir']:
+            # subprocess al crear un proceso hijo (otra terminal) no maneja bien el comando cd
+            if lista_comandos[0].lower() == "cd":
+                if len(lista_comandos) < 2:
+                    respuesta = "Error: Falta especificar el directorio de destino. Uso: cd <nombre_carpeta>"
+                else:
+                    try:
+                        
+                        # DIRECTORIO_RAIZ definido arriba, os.getcwd() directorio donde esta el servidor, path de linux une por si sola la ruta , no importa si esta en win o linux
+                        ruta_destino = (Path(os.getcwd()) / lista_comandos[1]).resolve()
+                        
+                        # Validación Anti-Path Traversal, se fija si el directorio al que quiere ir es hijo de mi directorio raiz o esta dentro del mismo
+                        if DIRECTORIO_RAIZ in ruta_destino.parents or ruta_destino == DIRECTORIO_RAIZ:
+                            os.chdir(ruta_destino)  # Cambia el directorio de trabajo del proceso padre(el servidor)
+                            respuesta = f"Directorio cambiado a: {os.getcwd()}"
+                        else:
+                            respuesta = "Error de Seguridad: No tenés permisos para salir de la raíz."
+                    except Exception as e:
+                        respuesta = f"Error al cambiar de directorio: {str(e)}"
+
+
+            elif sys.platform == "linux" and lista_comandos[0] in ['ls', 'pwd', 'cat', 'mkdir'] or sys.platform == "win32" and lista_comandos[0] in ['dir', 'pwd', 'type', 'mkdir']:
 
                 try:
                     # subprocess le delega el trabajo al so, devuelve un objeto con  las 3 propiedades , capture ouput devuelve el texto del comnado, text true decodifica byte a string
@@ -97,7 +125,7 @@ def atender_clientes(conn,addr):
                 respuesta = f"Error: Comando '{chunk}' no permitido o inválido.\n"
 
             respuesta_delimitada = respuesta + "\n"
-            conn.sendall(respuesta_delimitada.encode('utf-8'))           
+            enviar_mensaje_manual(conn,respuesta_delimitada)           
 
     except Exception as e:
         print(f"[ERROR] Con {addr}: {e}")
@@ -107,9 +135,10 @@ def atender_clientes(conn,addr):
         #Cuando el hilo termina, liberamos el pase para el próximo cliente
         semaforo_clientes.release()
 
+
 def validar_usuario(conn) -> bool: 
-    conn.sendall("Ingrese usuario y contraseña ".encode('utf-8')) 
-    datos = conn.recv(1024).decode('utf-8').strip().split()
+    enviar_mensaje_manual(conn,("Ingrese usuario y contraseña ")) 
+    datos = recibir_mensaje_manual(conn).strip().split()
     
     #evalua que se hayan enviado datos tanto en usuario como en contraseña
     if len(datos) < 2:
@@ -117,13 +146,10 @@ def validar_usuario(conn) -> bool:
 
     with open("users.json","r", encoding="utf-8") as archivo:
         datos_cargados = json.load(archivo)
-
-    print(datos_cargados)
-    print(datos)
     
 
     pass_hash = datos_cargados.get(datos[0],[])
-    print(pass_hash)
+    
     if not pass_hash: 
         return False
     
@@ -155,6 +181,7 @@ def inicio():
         while True:#loop infinito
             #accept genera tupla, socket y direccion ip
             conn, addr = server.accept()
+
             # antes de validar o crear el hilo veo si hay pases disponibles
             # Si ya hay 5, el flujo se frena acá hasta que uno se desconecte.
             semaforo_clientes.acquire()
@@ -166,16 +193,10 @@ def inicio():
             #enuvelvo el socket de la conexion con el contexto
             conn = contexto.wrap_socket(conn, server_side=True)
             
-            resultado_validacion = validar_usuario(conn)
-
-            if resultado_validacion:
-                #paso socket del cliente y direccion del cliente, esto genera procesos concurrentes
-                thread = threading.Thread(target=atender_clientes, args=(conn, addr))
-                thread.start()
-            else:
-                conn.close()
-                # Si no pasa la validación,  cierra el socket y libera el pase inmediatamente
-                semaforo_clientes.release()
+            #paso socket del cliente y direccion del cliente, esto genera procesos concurrentes
+            thread = threading.Thread(target=atender_clientes, args=(conn, addr))
+            thread.start()
+            
     except Exception as e:
         
         print(f"[ERROR1] Con {addr}: {e}")
