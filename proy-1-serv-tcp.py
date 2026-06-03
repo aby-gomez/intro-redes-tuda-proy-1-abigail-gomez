@@ -2,9 +2,11 @@ import socket
 import threading
 import subprocess    
 import json
-
-
-
+import sys
+import ssl
+import bcrypt
+import os
+from pathlib import Path
 """
 Requerimientos del servidor
 1. Implementar un servidor TCP en Python que:
@@ -29,6 +31,7 @@ PORT = 5000
 
 # semáforo global limitado a 5 pases
 semaforo_clientes = threading.Semaphore(5)
+DIRECTORIO_RAIZ = Path(os.getcwd()).resolve()
 
 comandos_disponibles= """
     • ls → listar archivos en el directorio actual o del path indicado
@@ -69,11 +72,11 @@ def atender_clientes(conn,addr):
             lista_comandos = chunk.split()
             print(lista_comandos)
            
-            if lista_comandos[0] in ['ls', 'pwd', 'cat', 'mkdir']:
+            if sys.platform == "linux" and lista_comandos[0] in ['ls', 'pwd', 'cat', 'mkdir'] or sys.platform == "win32" and lista_comandos[0] in ['dir', 'pwd', 'type', 'mkdir']:
 
                 try:
                     # subprocess le delega el trabajo al so, devuelve un objeto con  las 3 propiedades , capture ouput devuelve el texto del comnado, text true decodifica byte a string
-                    ejecucion = subprocess.run(lista_comandos, capture_output=True, text=True, timeout=5)
+                    ejecucion = subprocess.run(lista_comandos, shell=(sys.platform == "win32"),capture_output=True, text=True, timeout=5)
                     
                     #cuando todo esta ok envia un 0 sino algo disntitnto
                     if ejecucion.returncode != 0:
@@ -117,13 +120,19 @@ def validar_usuario(conn) -> bool:
 
     print(datos_cargados)
     print(datos)
+    
 
-    ok = datos_cargados.get(datos[0],[])
-    print(ok)
-    if not ok: 
+    pass_hash = datos_cargados.get(datos[0],[])
+    print(pass_hash)
+    if not pass_hash: 
         return False
     
-    if ok == datos[1] : 
+    #convierto los strings a bytes
+    password_cliente_bytes = datos[1].encode('utf-8')
+    pass_hash_bytes = pass_hash.encode('utf-8')
+
+    #bcrypt checquea si coinciden las contrseñas
+    if bcrypt.checkpw(password_cliente_bytes, pass_hash_bytes): 
         return True
     
     return False
@@ -149,6 +158,14 @@ def inicio():
             # antes de validar o crear el hilo veo si hay pases disponibles
             # Si ya hay 5, el flujo se frena acá hasta que uno se desconecte.
             semaforo_clientes.acquire()
+
+            #creo contexto de servidor
+            contexto = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            #cargo certficiados
+            contexto.load_cert_chain(certfile="servidor.crt", keyfile="servidor.key")
+            #enuvelvo el socket de la conexion con el contexto
+            conn = contexto.wrap_socket(conn, server_side=True)
+            
             resultado_validacion = validar_usuario(conn)
 
             if resultado_validacion:

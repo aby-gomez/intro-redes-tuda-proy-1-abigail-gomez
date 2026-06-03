@@ -1,4 +1,5 @@
 import socket
+import ssl
 import getpass
 """
 1. Implementar un cliente TCP en Python que:
@@ -37,6 +38,12 @@ def iniciar_sesion():
     try:
         #creo objeto socket que se conecta por ipv4 y por protocolo tcp
         cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        #contexto del cliente, como uso certificado propio hay que indicar que no pida nombres de dominio reales ni certificacion real
+        contexto = ssl.create_default_context()
+        contexto.check_hostname = False
+        contexto.verify_mode = ssl.CERT_NONE
+        cliente = contexto.wrap_socket(cliente)
 
         cliente.connect((HOST,PORT))
 
