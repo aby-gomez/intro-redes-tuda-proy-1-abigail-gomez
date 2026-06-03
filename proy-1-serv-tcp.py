@@ -85,7 +85,12 @@ def atender_clientes(conn,addr):
             # subprocess al crear un proceso hijo (otra terminal) no maneja bien el comando cd
             if lista_comandos[0].lower() == "cd":
                 if len(lista_comandos) < 2:
-                    respuesta = "Error: Falta especificar el directorio de destino. Uso: cd <nombre_carpeta>"
+                    if sys.platform == "win32":
+                        # En Windows, 'cd' solo devuelve la ruta actual
+                        respuesta = os.getcwd()
+                    else:
+                      
+                        respuesta = f"Directorio actual: {os.getcwd()}"
                 else:
                     try:
                         
@@ -102,9 +107,10 @@ def atender_clientes(conn,addr):
                         respuesta = f"Error al cambiar de directorio: {str(e)}"
 
 
-            elif (sys.platform == "linux" and lista_comandos[0] in ['ls', 'pwd', 'cat', 'mkdir']) or (sys.platform == "win32" and lista_comandos[0] in ['dir', 'pwd', 'type', 'mkdir']):
+            elif sys.platform == "linux" and lista_comandos[0] in ['ls', 'pwd', 'cat', 'mkdir'] or (sys.platform == "win32" and lista_comandos[0] in ['dir', 'pwd', 'type', 'mkdir']):
 
                 try:
+                    
                     # subprocess le delega el trabajo al so, devuelve un objeto con  las 3 propiedades , capture ouput devuelve el texto del comnado, text true decodifica byte a string
                     ejecucion = subprocess.run(lista_comandos, shell=(sys.platform == "win32"),capture_output=True, text=True, timeout=5)
                     
