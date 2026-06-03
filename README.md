@@ -40,7 +40,7 @@ El servidor emplea un modelo de **Multiprocesamiento Basado en Hilos por Conexi�
 
 ---
 
-### Agregación de nuevas funcionalidades 03/06           
+## Agregación de nuevas funcionalidades 03/06           
 
 * **Protocolo Manual (Prefijo de Longitud):** Para evitar que los mensajes grandes se corten o se junten en la red (fragmentación de buffers), se implementó un protocolo propio. Cada envío calcula el tamaño del mensaje y le pega adelante un header fijo de 10 bytes con ese número (usando `.zfill(10)`). El receptor lee primero los 10 bytes, sabe cuánto esperar y no corta la recepción hasta tener el cuerpo completo.
 * **Seguridad SSL/TLS:** Toda la comunicación viaja cifrada envolviendo los sockets nativos con el módulo `ssl` de Python.
@@ -51,7 +51,7 @@ El servidor emplea un modelo de **Multiprocesamiento Basado en Hilos por Conexi�
 ## 3. Guía de Ejecución
 ## Preparación del Entorno (Líneas de Comando)
 
-Antes de ejecutar el proyecto, es necesario instalar las librerías de seguridad y generar los certificados criptográficos para el canal seguro SSL/TLS.
+Antes de ejecutar el proyecto, es necesario instalar las librerías de seguridad y generar los certificados para el canal seguro SSL/TLS.
 
 ### Paso 1: Instalar dependencias
 En la terminal de Linux, instalá la librería necesaria para el manejo de contraseñas:
